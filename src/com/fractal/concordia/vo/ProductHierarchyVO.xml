@@ -1,0 +1,231 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="ProductHierarchyVO">
+	<resultMap type="ProductHierarchyVO" id="productHierarchyVOResult">
+		<id property="id" column="id_category" />
+		<result property="name" column="name" />
+		<result property="excelData" column="excelData" jdbcType="BLOB"/>
+		<result property="comments" column="comments" />
+		<result property="version" column="version" />
+		<result property="headerString" column="header_string" />
+		<collection property="headers" column="id_category" ofType="HeaderVO"
+			javaType="ArrayList" resultMap="headerVOResult">
+			<id property="id" column="id_header" />
+		</collection>
+	</resultMap>
+
+	<resultMap type="HeaderVO" id="headerVOResult">
+		<id property="id" column="id_category_header_mapping" />
+		<result property="name" column="header_name" />
+		<result property="number" column="header_number" />
+	</resultMap>
+
+	<resultMap type="FilePathVO" id="filePathVOResult">
+		<id property="id" column="id_file_path" />
+		<result property="local" column="local_file_path" />
+		<result property="global" column="global_file_path" />
+	</resultMap>
+
+	<resultMap type="CategoryMasterVO" id="categoryMasterVOResult">
+		<id property="id" column="id_category_master" />
+		<result property="name" column="category_name" />
+	</resultMap>
+	<resultMap type="CountryMasterVO" id="countryMasterVOResult">
+		<id property="id" column="id_country_master" />
+		<result property="name" column="country_name" />
+	</resultMap>
+	<resultMap type="DatasourceMasterVO" id="datasourceMasterVOResult">
+		<id property="id" column="id_datasource" />
+		<result property="name" column="datasource_name" />
+	</resultMap>
+
+	<resultMap type="CCDMappingVO" id="ccdMappingVOResult">
+		<id property="id" column="id_country_category_datasource_mapping" />
+		<result property="localFileName" column="local_file_name" />
+		<result property="globalFileName" column="globak_file_name" />
+		<result property="localPath" column="local_file_path" />
+		<result property="globalPath" column="global_file_path" />
+		
+		<association property="countryMasterVO" resultMap="countryMasterVOResult" />
+		<association property="categoryMasterVO" resultMap="categoryMasterVOResult" />
+		<association property="datasourceMasterVO" resultMap="datasourceMasterVOResult" />
+		<collection property="productHierarchyVOs" column="id_country_category_datasource_mapping" ofType="ProductHierarchyVO"
+			javaType="ArrayList" resultMap="productHierarchyVOResult">
+			<id property="id" column="id_category" />
+		</collection>
+	</resultMap>
+
+
+
+	<select id="fetchCategories" resultMap="productHierarchyVOResult">
+		select
+		c.id_category,
+		c.name,
+		ch.id_category_header_mapping,
+		ch.header_name,
+		ch.header_number,
+		GROUP_CONCAT(ch1.header_name) as header_string
+		from
+		category c
+		left join category_headers ch on c.id_category = ch.fk_id_category
+		left join category_headers ch1 on c.id_category = ch1.fk_id_category
+		where
+		c.fk_id_country_category_datasource_mapping = #{id}
+		group by
+		c.id_category,ch.id_category_header_mapping;
+	</select>
+
+	<insert id="saveCategoryHeaders">
+
+		INSERT INTO category_headers
+		(`fk_id_category`,
+		`header_name`,
+		`header_number`)
+		VALUES
+		<foreach collection="headers" item="header">
+			(#{id},
+			#{header.name},
+			#{header.number});
+		</foreach>
+	</insert>
+
+	<select id="insertCategories">
+		
+		delete category_headers from category  
+		join category_headers on category.id_category = category_headers.fk_id_category
+		where
+		category.fk_id_country_category_datasource_mapping = #{id};
+				
+		delete from category
+		where 
+		fk_id_country_category_datasource_mapping = #{id};
+	
+			
+		INSERT INTO category
+		(`fk_id_country_category_datasource_mapping`,`name`)
+		VALUES
+		<foreach collection="productHierarchyVOs" item="category" separator=",">	
+			(#{id},#{category.name})
+		</foreach>
+
+	</select>
+
+	<insert id="insertCategoryHeaders">
+
+		delete from
+		category_headers
+		where
+		fk_id_category = #{id};
+
+		INSERT INTO category_headers
+		(`fk_id_category`,
+		`header_name`,
+		`header_number`)
+		VALUES
+		<foreach collection="headers" item="header" separator=",">
+			(#{id},
+			#{header.name},
+			#{header.number})
+		</foreach>
+
+		;
+
+	</insert>
+
+	<select id="fetchFilePaths" resultMap="filePathVOResult">
+
+		select * from file_path;
+
+	</select>
+
+	<insert id="insertFilePaths">
+		INSERT INTO
+		file_path
+		(`local_file_path`, `global_file_path`)
+		VALUES
+		(#{local},#{global});
+	</insert>
+
+	<update id="updateFilePaths">
+		UPDATE `file_path`
+		SET
+		`local_file_path`= #{local},
+		`global_file_path`= #{global}
+		WHERE
+		`id_file_path`= #{id};
+
+	</update>
+	
+	
+	<select id="fetchCCDList" resultMap="ccdMappingVOResult">
+
+		select
+		*
+		from 
+		country_category_datasource_mapping ccd
+		left join country_master ctm on ccd.fk_id_country_master = ctm.id_country_master
+		left join category_master cam on ccd.fk_id_category_master = cam.id_category_master
+		left join datasource d on ccd.fk_id_datasource = d.id_datasource
+		order by ccd.modified_date desc, ccd.id_country_category_datasource_mapping desc;
+
+	</select>
+	
+	<select id="fetchCCDById" resultMap="ccdMappingVOResult">
+
+		select
+		*
+		from 
+		country_category_datasource_mapping ccd
+		left join country_master ctm on ccd.fk_id_country_master = ctm.id_country_master
+		left join category_master cam on ccd.fk_id_category_master = cam.id_category_master
+		left join datasource d on ccd.fk_id_datasource = d.id_datasource
+		left join file_path f on 1=1
+		where 
+		ccd.id_country_category_datasource_mapping = #{id};
+
+	</select>
+	
+	<select id="fetchCCDMasterData" resultMap="countryMasterVOResult,categoryMasterVOResult,datasourceMasterVOResult">  
+		select * from country_master;
+		select * from category_master;
+		select * from datasource;
+	</select>
+
+	<insert id="insertCCD" useGeneratedKeys="true" keyColumn="id_country_category_datasource_mapping" keyProperty="id">
+		INSERT INTO country_category_datasource_mapping 
+		(`fk_id_country_master`, `fk_id_category_master`, `fk_id_datasource`, `local_file_name`, `globak_file_name`,`created_date`,`modified_date`) 
+		VALUES 
+		(#{countryMasterVO.id}, #{categoryMasterVO.id}, #{datasourceMasterVO.id}, #{localFileName}, #{globalFileName}, now(), now());
+	</insert>
+
+	<update id="updateCCD">
+		UPDATE 
+		country_category_datasource_mapping 
+		SET 
+		`fk_id_country_master`= #{countryMasterVO.id}, 
+		`fk_id_category_master`= #{categoryMasterVO.id}, 
+		`fk_id_datasource`= #{datasourceMasterVO.id},  
+		`local_file_name`= #{localFileName}, 
+		`globak_file_name`= #{globalFileName} ,
+		`modified_date` = now()
+		WHERE  
+		`id_country_category_datasource_mapping`= #{id};
+
+	</update>
+	
+	<insert id="saveExcel" >
+	
+delete from inventory;
+INSERT INTO inventory (excel,comments,version) values (#{excelData},#{comments},#{version});
+
+	</insert>
+	
+	<select id="getExcel" resultMap="productHierarchyVOResult">
+	
+	select Excel as excelData from inventory;
+	</select>
+
+</mapper>	

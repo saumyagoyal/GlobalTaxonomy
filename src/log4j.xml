@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE log4j:configuration SYSTEM "log4j.dtd">
+<log4j:configuration xmlns:log4j="http://jakarta.apache.org/log4j/">
+	<appender name="FILEINFO" class="org.apache.log4j.DailyRollingFileAppender">
+		<param name="File" value="D:/Concordia/tomcat-8.5.11/logs/Loginfo.log" />
+		<param name="DatePattern" value="'.'yyyy-MM-dd" />
+		<param name="Append" value="true" />
+		<layout class="org.apache.log4j.PatternLayout">
+			<param name="ConversionPattern" value="%d{yyyy-MM-dd HH:mm:ss.SSS} [%t] %p - %m%n" />
+		</layout>
+	</appender>
+	<appender name="LOG" class="org.apache.log4j.DailyRollingFileAppender">
+		<param name="File" value="D:/Concordia/tomcat-8.5.11/logs/concordia-log.log" />
+		<param name="DatePattern" value="'.'yyyy-MM-dd" />
+		<param name="Append" value="true" />
+		<layout class="org.apache.log4j.PatternLayout">
+			<param name="ConversionPattern" value="%d{yyyy-MM-dd HH:mm:ss.SSS} [%t] %p - %m%n" />
+		</layout>
+	</appender>
+	<root>
+		<level value="ERROR" />
+		<appender-ref ref="FILEINFO" />
+	</root>
+	<category name="com.fractal">
+		<priority value="ERROR" />
+		<appender-ref ref="LOG" />
+	</category>
+	
+</log4j:configuration>
